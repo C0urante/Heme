@@ -13,7 +13,9 @@ instance Show Token where
     show (OPTok p) = [p]
     show (CPTok p) = [p]
 
-tokenize :: String -> [Either String Token]
+type TokenStream = [Either String Token]
+
+tokenize :: String -> TokenStream
 tokenize "" = [Left "EOF HACK"]
 tokenize (c:cs)
     | isSpace c = tokenize cs
