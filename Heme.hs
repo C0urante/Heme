@@ -26,4 +26,6 @@ repl ts = do
                 repl ts'
 
 main :: IO ()
-main = getContents >>= repl . tokenize
+main = do
+    getContents >>= repl . tokenize
+    putStr "\n"
