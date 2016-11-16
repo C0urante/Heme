@@ -25,3 +25,8 @@ interpret env (LetExp bs body) = env' >>= flip interpret body where
     (is,vs) = unzip bs
     bindings = Map.fromList . zip is <$> mapM (interpret env) vs
     env' = flip Map.union env <$> bindings
+interpret env (IfExp c t f) = case interpret env c of
+    Left err -> Left err
+    Right (BoolVal True) -> interpret env t
+    Right (BoolVal False) -> interpret env f
+    Right v -> Left $ "Not a boolean: '" ++ show v ++ "'"

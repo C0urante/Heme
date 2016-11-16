@@ -4,12 +4,13 @@ import Tokenizer (Token(..), matchParen, TokenStream)
 
 data Expression =
     VarExp String | StrExp String | IntExp Integer | AppExp [Expression] |
-    LambdaExp [String] Expression | LetExp [(String, Expression)] Expression
+    LambdaExp [String] Expression | LetExp [(String, Expression)] Expression |
+    IfExp Expression Expression Expression
     deriving (Eq, Show)
 
 data Expression' =
     IDExp' String | StrExp' String | IntExp' Integer | ListExp' [Expression'] |
-    Lambda | Let
+    Lambda | Let | If
     deriving (Eq, Show)
 
 parse :: TokenStream -> (Either String Expression, TokenStream)
@@ -22,9 +23,11 @@ parseHelper (StrExp' s) = Right $ StrExp s
 parseHelper (IntExp' n) = Right $ IntExp n
 parseHelper (ListExp' (Lambda:es')) = parseLambda es'
 parseHelper (ListExp' (Let:es')) = parseLet es'
+parseHelper (ListExp' (If:es')) = parseIf es'
 parseHelper (ListExp' es') = AppExp <$> mapM parseHelper es'
 parseHelper Lambda = Left "Unexpected use of lambda"
 parseHelper Let = Left "Unexpected use of let"
+parseHelper If = Left "Unexpected use of if"
 
 parseLambda :: [Expression'] -> Either String Expression
 parseLambda [ListExp' l,body] = case mapM extractID l of
@@ -41,6 +44,10 @@ parseLet [ListExp' l,body] = case mapM extractLetPair l of
 parseLet [_,_] = Left "Invalid let syntax; first argument must be list of identifier, expression pairs"
 parseLet es' = Left $ "Invalid let syntax; expected two arguments, got " ++ show (length es')
 
+parseIf :: [Expression'] -> Either String Expression
+parseIf [c,t,f] = IfExp <$> parseHelper c <*> parseHelper t <*> parseHelper f
+parseIf es' = Left $ "Invalid if syntax; expected three arguments, got " ++ show (length es')
+
 extractID :: Expression' -> Maybe String
 extractID (IDExp' i) = Just i
 extractID _ = Nothing
@@ -54,6 +61,7 @@ parse' [] = (Left "Unexpected end of token stream", [])
 parse' (Left err:ts) = (Left err, ts)
 parse' (Right (IDTok "lambda"):ts) = (Right Lambda, ts)
 parse' (Right (IDTok "let"):ts) = (Right Let, ts)
+parse' (Right (IDTok "if"):ts) = (Right If, ts)
 parse' (Right (IDTok i):ts) = (Right (IDExp' i), ts)
 parse' (Right (StrTok s):ts) = (Right (StrExp' s), ts)
 parse' (Right (IntTok n):ts) = (Right (IntExp' n), ts)
