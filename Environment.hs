@@ -6,7 +6,7 @@ import Data.Char (toLower)
 
 data Value =
     BoolVal Bool | StrVal String | IntVal Integer | ListVal [Value] |
-    FunVal [String] Expression | Builtin String ([Value] -> Either String Value)
+    FunVal Environment [String] Expression | Builtin String ([Value] -> Either String Value)
 
 type Environment = Map.Map String Value
 
@@ -16,7 +16,7 @@ instance Eq Value where
     (IntVal n) == (IntVal n') = n == n'
     (ListVal l) == (ListVal l') = l == l'
     (Builtin i _) == (Builtin i' _) = i == i'
-    (FunVal as body) == (FunVal as' body') = as == as' && body == body'
+    (FunVal env as body) == (FunVal env' as' body') = env == env' && as == as' && body == body'
     _ == _ = False
 
 instance Show Value where
@@ -24,7 +24,7 @@ instance Show Value where
     show (StrVal s) = show s
     show (IntVal n) = show n
     show (ListVal l) = "(" ++ unwords (map show l) ++ ")"
-    show (FunVal _ _) = "<user-defined function>"
+    show (FunVal _ _ _) = "<user-defined function>"
     show (Builtin i _) = "<builtin function '" ++ i ++ "'>"
 
 defaultEnv :: Environment
@@ -89,7 +89,7 @@ isList _ = False
 
 isFun :: Value -> Bool
 isFun (Builtin _ _) = True
-isFun (FunVal _ _) = True
+isFun (FunVal _ _ _) = True
 isFun _ = False
 
 isBuiltin :: Value -> Bool
