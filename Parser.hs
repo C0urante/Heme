@@ -4,12 +4,12 @@ import Tokenizer (Token(..), matchParen, TokenStream)
 
 data Expression =
     VarExp String | StrExp String | IntExp Integer | AppExp [Expression] |
-    LambdaExp [String] Expression
+    LambdaExp [String] Expression | LetExp [(String, Expression)] Expression
     deriving (Eq, Show)
 
 data Expression' =
     IDExp' String | StrExp' String | IntExp' Integer | ListExp' [Expression'] |
-    LambdaExp'
+    Lambda | Let
     deriving (Eq, Show)
 
 parse :: TokenStream -> (Either String Expression, TokenStream)
@@ -20,9 +20,11 @@ parseHelper :: Expression' -> Either String Expression
 parseHelper (IDExp' i) = Right $ VarExp i
 parseHelper (StrExp' s) = Right $ StrExp s
 parseHelper (IntExp' n) = Right $ IntExp n
-parseHelper (ListExp' (LambdaExp':es')) = parseLambda es'
+parseHelper (ListExp' (Lambda:es')) = parseLambda es'
+parseHelper (ListExp' (Let:es')) = parseLet es'
 parseHelper (ListExp' es') = AppExp <$> mapM parseHelper es'
-parseHelper LambdaExp' = Left "Unexpected use of lambda"
+parseHelper Lambda = Left "Unexpected use of lambda"
+parseHelper Let = Left "Unexpected use of let"
 
 parseLambda :: [Expression'] -> Either String Expression
 parseLambda [ListExp' l,body] = case mapM extractID l of
@@ -31,14 +33,27 @@ parseLambda [ListExp' l,body] = case mapM extractID l of
 parseLambda [_,_] = Left "Invalid lambda syntax; first argument must be list of identifiers"
 parseLambda es' = Left $ "Invalid lambda syntax; expected two arguments, got " ++ show (length es')
 
+parseLet :: [Expression'] -> Either String Expression
+parseLet [ListExp' l,body] = case mapM extractLetPair l of
+    Just p -> let (is, vs) = unzip p in
+        LetExp <$> (zip is <$> mapM parseHelper vs) <*> parseHelper body
+    Nothing -> Left "Invalid let syntax; first argument must be list of identifier, expression pairs"
+parseLet [_,_] = Left "Invalid let syntax; first argument must be list of identifier, expression pairs"
+parseLet es' = Left $ "Invalid let syntax; expected two arguments, got " ++ show (length es')
+
 extractID :: Expression' -> Maybe String
 extractID (IDExp' i) = Just i
 extractID _ = Nothing
 
+extractLetPair :: Expression' -> Maybe (String, Expression')
+extractLetPair (ListExp' [IDExp' i,e']) = Just (i, e')
+extractLetPair _ = Nothing
+
 parse' :: TokenStream -> (Either String Expression', TokenStream)
 parse' [] = (Left "Unexpected end of token stream", [])
 parse' (Left err:ts) = (Left err, ts)
-parse' (Right (IDTok "lambda"):ts) = (Right LambdaExp', ts)
+parse' (Right (IDTok "lambda"):ts) = (Right Lambda, ts)
+parse' (Right (IDTok "let"):ts) = (Right Let, ts)
 parse' (Right (IDTok i):ts) = (Right (IDExp' i), ts)
 parse' (Right (StrTok s):ts) = (Right (StrExp' s), ts)
 parse' (Right (IntTok n):ts) = (Right (IntExp' n), ts)

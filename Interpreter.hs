@@ -20,4 +20,8 @@ interpret env (AppExp (f:as)) = case interpret env f of
             else Left "Argument arity mismatch"
     Right (Builtin _ f') -> mapM (interpret env) as >>= f'
     Right v -> Left $ "Not a function: '" ++ show v ++ "'"
-interpret env (LambdaExp ps b) = Right $ FunVal env ps b
+interpret env (LambdaExp ps e) = Right $ FunVal env ps e
+interpret env (LetExp bs body) = env' >>= flip interpret body where
+    (is,vs) = unzip bs
+    bindings = Map.fromList . zip is <$> mapM (interpret env) vs
+    env' = flip Map.union env <$> bindings
