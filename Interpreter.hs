@@ -5,28 +5,44 @@ import Environment (Value(..), Environment)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 
-interpret :: Environment -> Expression -> Either String Value
-interpret _ (StrExp s) = Right $ StrVal s
-interpret _ (IntExp n) = Right $ IntVal n
-interpret env (SymExp i) = case Map.lookup i env of
+interpret :: Environment -> Expression -> Either String (Environment, Value)
+interpret env (ListExp (e:es)) = case interpret' env e of
+    Left err -> Left err
+    Right Define -> flip (,) Void <$> interpretDefine env es
+    Right f -> (,) env <$> interpretApplication env f es
+interpret env e = (,) env <$> interpret' env e
+
+interpret' :: Environment -> Expression -> Either String Value
+interpret' _ (StrExp s) = Right $ StrVal s
+interpret' _ (IntExp n) = Right $ IntVal n
+interpret' env (SymExp i) = case Map.lookup i env of
     Just v -> Right v
     Nothing -> Left $ "Reference to undefined identifier: '" ++ i ++ "'"
-interpret _ (ListExp []) = Left "Application: no function given"
-interpret env (ListExp (e:es)) = case interpret env e of
+interpret' _ (ListExp []) = Left "Application: no function given"
+interpret' env (ListExp (e:es)) = case interpret' env e of
     Left err -> Left err
-    Right (FunVal env' ps body) -> env'' >>= flip interpret body where
-        env'' = flip Map.union (Map.union env' env) <$> args
-        args = if length ps == length es
-            then Map.fromList . zip ps <$> mapM (interpret env) es
-            else Left "Application: Argument arity mismatch"
-    Right (Builtin _ f') -> mapM (interpret env) es >>= f'
-    Right Lambda -> interpretLambda env es
-    Right Let -> interpretLet env es
-    Right If -> interpretIf env es
-    Right Cond -> interpretCond env es
-    Right And -> interpretAnd env es
-    Right Or -> interpretOr env es
-    Right v -> Left $ "Application: not a function: '" ++ show v ++ "'"
+    Right f -> interpretApplication env f es
+
+interpretApplication :: Environment -> Value -> [Expression] -> Either String Value
+interpretApplication env (FunVal env' ps body) es = env'' >>= flip interpret' body where
+    env'' = flip Map.union (Map.union env' env) <$> args
+    args = if length ps == length es
+        then Map.fromList . zip ps <$> mapM (interpret' env) es
+        else Left "Application: Argument arity mismatch"
+interpretApplication env (Builtin _ f') es = mapM (interpret' env) es >>= f'
+interpretApplication env Lambda es = interpretLambda env es
+interpretApplication env Let es = interpretLet env es
+interpretApplication env If es = interpretIf env es
+interpretApplication env Cond es = interpretCond env es
+interpretApplication env And es = interpretAnd env es
+interpretApplication env Or es = interpretOr env es
+interpretApplication _ Define _ = Left "Define: application error; only allowed as top-level expression"
+interpretApplication _ v _ = Left $ "Application: not a function: '" ++ show v ++ "'"
+
+interpretDefine :: Environment -> [Expression] -> Either String Environment
+interpretDefine env [SymExp s,e] = flip (Map.insert s) env <$> interpret' env e
+interpretDefine _ [_,_] = Left "Define: syntax error; first argument must be identifier"
+interpretDefine _ es = Left $ "Define: syntax error; expected two arguments, found " ++ show (length es)
 
 interpretLambda :: Environment -> [Expression] -> Either String Value
 interpretLambda env [ListExp ps,body] = case mapM extractSym ps of
@@ -42,9 +58,9 @@ extractSym _ = Nothing
 interpretLet :: Environment -> [Expression] -> Either String Value
 interpretLet env [ListExp bs,body] = case mapM extractLetPair bs of
     Nothing -> Left "Let: syntax error; first argument must be list of identifier, expression pairs"
-    Just bs' -> env' >>= flip interpret body where
+    Just bs' -> env' >>= flip interpret' body where
         env' = flip Map.union env <$> bindings
-        bindings = (Map.fromList . zip is) <$> mapM (interpret env) vs
+        bindings = (Map.fromList . zip is) <$> mapM (interpret' env) vs
         (is,vs) = unzip bs'
 interpretLet _ [_,_] = Left "Let: syntax error; first argument must be list of identifier, expression pairs"
 interpretLet _ es = Left $ "Let: syntax error; expected two arguments, found " ++ show (length es)
@@ -54,8 +70,8 @@ extractLetPair (ListExp [SymExp i,e]) = Just (i, e)
 extractLetPair _ = Nothing
 
 interpretIf :: Environment -> [Expression] -> Either String Value
-interpretIf env [c,t,f] = case interpret env c of
-    Right (BoolVal b) -> interpret env (if b then t else f)
+interpretIf env [c,t,f] = case interpret' env c of
+    Right (BoolVal b) -> interpret' env (if b then t else f)
     Right v -> Left $ "If: type error; first argument must be boolean, found " ++ show v
     Left err -> Left err
 interpretIf _ es = Left $ "If: syntax error; expected two arguments, found " ++ show (length es)
@@ -71,24 +87,24 @@ extractCondPair (ListExp [e1,e2]) = Just (e1,e2)
 extractCondPair _ = Nothing
 
 evalCondPair :: Environment -> (Expression, Expression) -> Maybe (Either String Value)
-evalCondPair env (b,v) = case interpret env b of
+evalCondPair env (b,v) = case interpret' env b of
     Left err -> Just $ Left err
-    Right (BoolVal True) -> Just $ interpret env v
+    Right (BoolVal True) -> Just $ interpret' env v
     Right (BoolVal False) -> Nothing
     Right b' -> Just $ Left $ "Cond: type error; first expression in each pair must be boolean, found " ++ show b'
 
 interpretAnd :: Environment -> [Expression] -> Either String Value
 interpretAnd _ [] = Right $ BoolVal True
-interpretAnd env [e] = interpret env e
-interpretAnd env (e:es) = case interpret env e of
+interpretAnd env [e] = interpret' env e
+interpretAnd env (e:es) = case interpret' env e of
     Left err -> Left err
     Right (BoolVal False) -> Right $ BoolVal False
     Right _ -> interpretAnd env es
 
 interpretOr :: Environment -> [Expression] -> Either String Value
 interpretOr _ [] = Right $ BoolVal False
-interpretOr env [e] = interpret env e
-interpretOr env (e:es) = case interpret env e of
+interpretOr env [e] = interpret' env e
+interpretOr env (e:es) = case interpret' env e of
     Left err -> Left err
     Right (BoolVal False) -> interpretOr env es
     Right v -> Right v

@@ -7,7 +7,7 @@ import Data.Char (toLower)
 data Value =
     BoolVal Bool | StrVal String | IntVal Integer | ListVal [Value] |
     FunVal Environment [String] Expression | Builtin String ([Value] -> Either String Value) |
-    Lambda | Let | If | Cond | And | Or | Void
+    Define | Lambda | Let | If | Cond | And | Or | Void
 
 type Environment = Map.Map String Value
 
@@ -18,10 +18,14 @@ instance Eq Value where
     (ListVal l) == (ListVal l') = l == l'
     (FunVal env as body) == (FunVal env' as' body') = env == env' && as == as' && body == body'
     (Builtin i _) == (Builtin i' _) = i == i'
+    Define == Define = True
     Lambda == Lambda = True
     Let == Let = True
     If == If = True
     Cond == Cond = True
+    And == And = True
+    Or == Or = True
+    Void == Void = True
     _ == _ = False
 
 instance Show Value where
@@ -31,11 +35,12 @@ instance Show Value where
     show (ListVal l) = "(" ++ unwords (map show l) ++ ")"
     show (FunVal _ _ _) = "<user-defined function>"
     show (Builtin i _) = "<builtin function '" ++ i ++ "'>"
+    show Define = "<define>"
     show Lambda = "<lambda>"
     show Let = "<let>"
     show If = "<if>"
-    show And = "and"
-    show Or = "or"
+    show And = "<and>"
+    show Or = "<or>"
     show Cond = "<cond>"
     show Void = "<void>"
 
@@ -59,14 +64,13 @@ defaultEnv = Map.fromList [
         ("list?", Builtin "list?" $ typePred isList),
         ("function?", Builtin "function?" $ typePred isFun),
         ("builtin?", Builtin "builtin?" $ typePred isBuiltin),
-        ("not", Builtin "not" notFun),
         ("list", Builtin "list" (Right . ListVal)),
         ("car", Builtin "car" carFun),
         ("cdr", Builtin "cdr" cdrFun),
         ("cons", Builtin "cons" consFun),
         ("true", BoolVal True),
         ("false", BoolVal False),
-        ("null", ListVal []),
+        ("define", Define),
         ("lambda", Lambda),
         ("λ", Lambda),
         ("let", Let),
