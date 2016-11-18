@@ -122,10 +122,6 @@ isBuiltin :: Value -> Bool
 isBuiltin (Builtin _ _) = True
 isBuiltin _ = False
 
-notFun :: [Value] -> Either String Value
-notFun [v] = (BoolVal . not) <$> ensureBoolVal v
-notFun vs = argCountError 1 vs
-
 carFun :: [Value] -> Either String Value
 carFun [v] = head <$> (ensureListVal v >>= nullCheck)
 carFun vs = argCountError 1 vs
