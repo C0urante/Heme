@@ -7,7 +7,7 @@ import Data.Char (toLower)
 data Value =
     BoolVal Bool | StrVal String | IntVal Integer | ListVal [Value] |
     FunVal Environment [String] Expression | Builtin String ([Value] -> Either String Value) |
-    Lambda | Let | If | Cond
+    Lambda | Let | If | Cond | And | Or | Void
 
 type Environment = Map.Map String Value
 
@@ -34,7 +34,10 @@ instance Show Value where
     show Lambda = "<lambda>"
     show Let = "<let>"
     show If = "<if>"
+    show And = "and"
+    show Or = "or"
     show Cond = "<cond>"
+    show Void = "<void>"
 
 defaultEnv :: Environment
 defaultEnv = Map.fromList [
@@ -60,13 +63,18 @@ defaultEnv = Map.fromList [
         ("list", Builtin "list" (Right . ListVal)),
         ("car", Builtin "car" carFun),
         ("cdr", Builtin "cdr" cdrFun),
+        ("cons", Builtin "cons" consFun),
         ("true", BoolVal True),
         ("false", BoolVal False),
+        ("null", ListVal []),
         ("lambda", Lambda),
         ("λ", Lambda),
         ("let", Let),
         ("if", If),
-        ("cond", Cond)
+        ("cond", Cond),
+        ("and", And),
+        ("or", Or),
+        ("void", Void)
     ]
 
 arithFun :: (Integer -> Integer -> Integer) -> [Value] -> Either String Value
@@ -121,6 +129,10 @@ carFun vs = argCountError 1 vs
 cdrFun :: [Value] -> Either String Value
 cdrFun [v] = (ListVal . tail) <$> (ensureListVal v >>= nullCheck)
 cdrFun vs = argCountError 1 vs
+
+consFun :: [Value] -> Either String Value
+consFun [v,vs] = (ListVal . (v:)) <$> ensureListVal vs
+consFun vs = argCountError 2 vs
 
 nullCheck :: [Value] -> Either String [Value]
 nullCheck [] = Left "Unexpected empty list"

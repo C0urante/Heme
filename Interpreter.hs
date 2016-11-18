@@ -18,12 +18,14 @@ interpret env (ListExp (e:es)) = case interpret env e of
         env'' = flip Map.union (Map.union env' env) <$> args
         args = if length ps == length es
             then Map.fromList . zip ps <$> mapM (interpret env) es
-            else Left "Argument arity mismatch"
+            else Left "Application: Argument arity mismatch"
     Right (Builtin _ f') -> mapM (interpret env) es >>= f'
     Right Lambda -> interpretLambda env es
     Right Let -> interpretLet env es
     Right If -> interpretIf env es
     Right Cond -> interpretCond env es
+    Right And -> interpretAnd env es
+    Right Or -> interpretOr env es
     Right v -> Left $ "Application: not a function: '" ++ show v ++ "'"
 
 interpretLambda :: Environment -> [Expression] -> Either String Value
@@ -74,3 +76,19 @@ evalCondPair env (b,v) = case interpret env b of
     Right (BoolVal True) -> Just $ interpret env v
     Right (BoolVal False) -> Nothing
     Right b' -> Just $ Left $ "Cond: type error; first expression in each pair must be boolean, found " ++ show b'
+
+interpretAnd :: Environment -> [Expression] -> Either String Value
+interpretAnd _ [] = Right $ BoolVal True
+interpretAnd env [e] = interpret env e
+interpretAnd env (e:es) = case interpret env e of
+    Left err -> Left err
+    Right (BoolVal False) -> Right $ BoolVal False
+    Right _ -> interpretAnd env es
+
+interpretOr :: Environment -> [Expression] -> Either String Value
+interpretOr _ [] = Right $ BoolVal False
+interpretOr env [e] = interpret env e
+interpretOr env (e:es) = case interpret env e of
+    Left err -> Left err
+    Right (BoolVal False) -> interpretOr env es
+    Right v -> Right v
