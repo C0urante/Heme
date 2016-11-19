@@ -51,6 +51,7 @@ instance Show Value where
 
 defaultEnv :: Environment
 defaultEnv = Map.fromList [
+        ("error", Builtin "error" errorFun),
         ("+",  Builtin "+"  $ arithFun (+)),
         ("-",  Builtin "-"  $ arithFun (-)),
         ("*",  Builtin "*"  $ arithFun (*)),
@@ -86,6 +87,10 @@ defaultEnv = Map.fromList [
         ("or", Or),
         ("void", Void)
     ]
+
+errorFun :: [Value] -> Either String Value
+errorFun [v] = Left $ show v
+errorFun vs = argCountError 1 vs
 
 arithFun :: (Integer -> Integer -> Integer) -> [Value] -> Either String Value
 arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
