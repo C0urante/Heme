@@ -24,20 +24,24 @@ interpret' env (ListExp (e:es)) = case interpret' env e of
     Right f -> interpretApplication env f es
 
 interpretApplication :: Environment -> Value -> [Expression] -> Either String Value
-interpretApplication env (FunVal env' ps body) es = env'' >>= flip interpret' body where
-    env'' = flip Map.union (Map.union env' env) <$> args
-    args = if length ps == length es
-        then Map.fromList . zip ps <$> mapM (interpret' env) es
-        else Left "Application: Argument arity mismatch"
-interpretApplication env (Builtin _ f') es = mapM (interpret' env) es >>= f'
 interpretApplication env Lambda es = interpretLambda env es
+interpretApplication env Apply es = interpretApply env es
 interpretApplication env Let es = interpretLet env es
 interpretApplication env If es = interpretIf env es
 interpretApplication env Cond es = interpretCond env es
 interpretApplication env And es = interpretAnd env es
 interpretApplication env Or es = interpretOr env es
 interpretApplication _ Define _ = Left "Define: application error; only allowed as top-level expression"
-interpretApplication _ v _ = Left $ "Application: not a function: '" ++ show v ++ "'"
+interpretApplication env v es = mapM (interpret' env) es >>= interpretFunction env v
+
+interpretFunction :: Environment -> Value -> [Value] -> Either String Value
+interpretFunction env (FunVal env' ps body) args = env'' >>= flip interpret' body where
+    env'' = flip Map.union (Map.union env' env) <$> args'
+    args' = if length ps == length args
+        then Right $ Map.fromList $ zip ps args
+        else Left $ "Application: application error; expected " ++ show (length ps) ++ " arguments, found " ++ show (length args)
+interpretFunction _ (Builtin _ f) args = f args
+interpretFunction _ v _ = Left $ "Application: type error; expected function, found " ++ show v
 
 interpretDefine :: Environment -> [Expression] -> Either String Environment
 interpretDefine env [SymExp s,e] = flip (Map.insert s) env <$> interpret' env e
@@ -54,6 +58,13 @@ interpretLambda _ es = Left $ "Lambda: syntax error; expected two arguments, fou
 extractSym :: Expression -> Maybe String
 extractSym (SymExp s) = Just s
 extractSym _ = Nothing
+
+interpretApply :: Environment -> [Expression] -> Either String Value
+interpretApply env [f,l] = case (,) <$> interpret' env f <*> interpret' env l of
+    Left err -> Left err
+    Right (f',ListVal l') -> interpretFunction env f' l'
+    Right (_,l') -> Left $ "Apply: type error; second argument must be list, found " ++ show l'
+interpretApply _ es = Left $ "Apply: syntax error; expected two arguments, found " ++ show (length es)
 
 interpretLet :: Environment -> [Expression] -> Either String Value
 interpretLet env [ListExp bs,body] = case mapM extractLetPair bs of

@@ -7,7 +7,7 @@ import Data.Char (toLower)
 data Value =
     BoolVal Bool | StrVal String | IntVal Integer | ListVal [Value] |
     FunVal Environment [String] Expression | Builtin String ([Value] -> Either String Value) |
-    Define | Lambda | Let | If | Cond | And | Or | Void
+    Define | Lambda | Apply | Let | If | Cond | And | Or | Void
 
 type Environment = Map.Map String Value
 
@@ -20,6 +20,7 @@ instance Eq Value where
     (Builtin i _) == (Builtin i' _) = i == i'
     Define == Define = True
     Lambda == Lambda = True
+    Apply == Apply = True
     Let == Let = True
     If == If = True
     Cond == Cond = True
@@ -37,6 +38,7 @@ instance Show Value where
     show (Builtin i _) = "<builtin function '" ++ i ++ "'>"
     show Define = "<define>"
     show Lambda = "<lambda>"
+    show Apply = "<apply>"
     show Let = "<let>"
     show If = "<if>"
     show And = "<and>"
@@ -73,6 +75,7 @@ defaultEnv = Map.fromList [
         ("define", Define),
         ("lambda", Lambda),
         ("λ", Lambda),
+        ("apply", Apply),
         ("let", Let),
         ("if", If),
         ("cond", Cond),
