@@ -1,7 +1,7 @@
 module Interpreter where
 
 import Parser (Expression(..))
-import Environment (Value(..), Environment)
+import Environment (Value(..), FunParams(..), Environment)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 
@@ -35,11 +35,13 @@ interpretApplication _ Define _ = Left "Define: application error; only allowed 
 interpretApplication env v es = mapM (interpret' env) es >>= interpretFunction env v
 
 interpretFunction :: Environment -> Value -> [Value] -> Either String Value
-interpretFunction env (FunVal env' ps body) args = env'' >>= flip interpret' body where
+interpretFunction env (FunVal env' (FunParams ps) body) args = env'' >>= flip interpret' body where
     env'' = flip Map.union (Map.union env' env) <$> args'
     args' = if length ps == length args
         then Right $ Map.fromList $ zip ps args
         else Left $ "Application: application error; expected " ++ show (length ps) ++ " arguments, found " ++ show (length args)
+interpretFunction env (FunVal env' (VarParams p) body) args = interpret' env'' body where
+    env'' = Map.insert p (ListVal args) (Map.union env' env)
 interpretFunction _ (Builtin _ f) args = f args
 interpretFunction _ v _ = Left $ "Application: type error; expected function, found " ++ show v
 
@@ -49,8 +51,9 @@ interpretDefine _ [_,_] = Left "Define: syntax error; first argument must be ide
 interpretDefine _ es = Left $ "Define: syntax error; expected two arguments, found " ++ show (length es)
 
 interpretLambda :: Environment -> [Expression] -> Either String Value
+interpretLambda env [SymExp p,body] = Right $ FunVal env (VarParams p) body
 interpretLambda env [ListExp ps,body] = case mapM extractSym ps of
-    Just ps' -> Right $ FunVal env ps' body
+    Just ps' -> Right $ FunVal env (FunParams ps') body
     Nothing -> Left "Lambda: syntax error; first argument must be list of identifiers"
 interpretLambda _ [_,_] = Left "Lambda: syntax error; first argument must be list of identifiers"
 interpretLambda _ es = Left $ "Lambda: syntax error; expected two arguments, found " ++ show (length es)

@@ -6,8 +6,11 @@ import Data.Char (toLower)
 
 data Value =
     BoolVal Bool | StrVal String | IntVal Integer | ListVal [Value] |
-    FunVal Environment [String] Expression | Builtin String ([Value] -> Either String Value) |
+    FunVal Environment FunParams Expression | Builtin String ([Value] -> Either String Value) |
     Define | Lambda | Apply | Let | If | Cond | And | Or | Void
+
+data FunParams = FunParams [String] | VarParams String
+    deriving Eq
 
 type Environment = Map.Map String Value
 
@@ -16,7 +19,7 @@ instance Eq Value where
     (StrVal s) == (StrVal s') = s == s'
     (IntVal n) == (IntVal n') = n == n'
     (ListVal l) == (ListVal l') = l == l'
-    (FunVal env as body) == (FunVal env' as' body') = env == env' && as == as' && body == body'
+    (FunVal env p body) == (FunVal env' p' body') = env == env' && p == p' && body == body'
     (Builtin i _) == (Builtin i' _) = i == i'
     Define == Define = True
     Lambda == Lambda = True
