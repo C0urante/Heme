@@ -22,6 +22,7 @@
             (if (<= start stop) null (cons start (range (+ start step) stop step))))
     )
 ))
+
 (define map (lambda (f l) (if (null? l) null (cons (f (car l)) (map f (cdr l))))))
 (define filter (lambda (p l)
     (cond
@@ -30,6 +31,10 @@
         (true (filter p (cdr l)))
     )
 ))
+
+(define foldr (lambda (f d l) (if (null? l) d (f (car l) (foldr f d (cdr l))))))
+(define foldl (lambda (f d l) (if (null? l) d (f (foldl f d (cdr l)) (car l)))))
+
 (define caar (lambda (l) (car (car l))))
 (define cadr (lambda (l) (car (cdr l))))
 (define cdar (lambda (l) (cdr (car l))))
