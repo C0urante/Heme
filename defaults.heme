@@ -6,13 +6,6 @@
 (define negative? (lambda (n) (< n 0)))
 (define odd? (lambda (n) (= 1 (% n 2))))
 (define even? (lambda (n) (= 0 (% n 2))))
-(define replace (lambda (e r l)
-    (cond
-        ((null? l) null)
-        ((equal? e (car l)) (cons r (replace e r (cdr l))))
-        (true (cons (car l) (replace e r (cdr l))))
-    )
-))
 (define range (lambda (start stop step)
     (cond
         ((zero? step) null)
