@@ -12,6 +12,10 @@ data Value =
 data FunParams = FunParams [String] | VarParams String
     deriving Eq
 
+instance Show FunParams where
+    show (FunParams ps) = "(" ++ unwords ps ++ ")"
+    show (VarParams p) = p
+
 type Environment = Map.Map String Value
 
 instance Eq Value where
@@ -37,7 +41,7 @@ instance Show Value where
     show (StrVal s) = show s
     show (IntVal n) = show n
     show (ListVal l) = "(" ++ unwords (map show l) ++ ")"
-    show (FunVal _ _ _) = "<user-defined function>"
+    show (FunVal _ p b) = "(lambda " ++ show p ++ " " ++ show b ++ ")"
     show (Builtin i _) = "<builtin function '" ++ i ++ "'>"
     show Define = "<define>"
     show Lambda = "<lambda>"

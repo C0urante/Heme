@@ -4,7 +4,13 @@ import Tokenizer (Token(..), matchParen, TokenStream)
 
 data Expression =
     SymExp String | StrExp String | IntExp Integer | ListExp [Expression]
-    deriving (Eq, Show)
+    deriving Eq
+
+instance Show Expression where
+    show (SymExp s) = s
+    show (StrExp s) = show s
+    show (IntExp n) = show n
+    show (ListExp l) = "(" ++ unwords (map show l) ++ ")"
 
 parse :: TokenStream -> (Either String Expression, TokenStream)
 parse [] = (Left "Unexpected end of token stream", [])
