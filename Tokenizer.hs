@@ -26,12 +26,18 @@ tokenize (c:cs)
     | isOpenParen c = (Right $ OPTok c) : tokenize cs
     | isCloseParen c = (Right $ CPTok c) : tokenize cs
     | otherwise = let (t, cs') = break isDelimiter (c:cs) in
-        if all isDigit t || (not (null t) && head t == '-' && all isDigit (tail t))
+        if isNumber t
             then (Right $ IntTok $ read t) : tokenize cs'
             else (Right $ IDTok t) : tokenize cs'
 
 isDelimiter :: Char -> Bool
 isDelimiter c = isOpenParen c || isCloseParen c || isSpace c || c == '"'
+
+isNumber :: String -> Bool
+isNumber "" = False
+isNumber "-" = False
+isNumber ('-':cs) = all isDigit cs
+isNumber cs = all isDigit cs
 
 parentheses :: [(Char, Char)]
 parentheses = [('(', ')'), ('[', ']'), ('{', '}')]
