@@ -6,14 +6,20 @@
 (define negative? (lambda (n) (< n 0)))
 (define odd? (lambda (n) (= 1 (% n 2))))
 (define even? (lambda (n) (= 0 (% n 2))))
-(define range (lambda (start stop step)
-    (cond
-        ((zero? step) null)
-        ((positive? step)
-            (if (>= start stop) null (cons start (range (+ start step) stop step))))
-        ((negative? step)
-            (if (<= start stop) null (cons start (range (+ start step) stop step))))
-    )
+(define range (let ([helper (lambda (start stop step)
+                      (cond
+                          ((zero? step) null)
+                          ((positive? step)
+                              (if (>= start stop) null (cons start (range (+ start step) stop step))))
+                          ((negative? step)
+                              (if (<= start stop) null (cons start (range (+ start step) stop step))))
+                      ))])
+    (lambda args (cond
+        ((= 1 (length args)) (helper 0 (car args) 1))
+        ((= 2 (length args)) (helper (car args) (cadr args) 1))
+        ((= 3 (length args)) (helper (car args) (cadr args) (caddr args)))
+        (true (error "range: invalid number of arguments"))
+    ))
 ))
 
 (define map (lambda (f l) (if (null? l) null (cons (f (car l)) (map f (cdr l))))))
