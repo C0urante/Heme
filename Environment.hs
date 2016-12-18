@@ -94,7 +94,7 @@ defaultEnv = Map.fromList [
 
 errorFun :: [Value] -> Either String Value
 errorFun [v] = Left $ show v
-errorFun vs = argCountError 1 vs
+errorFun vs = argCountError "1" vs
 
 arithFun :: Integer -> (Integer -> Integer -> Integer) -> [Value] -> Either String Value
 arithFun base _ [] = Right $ IntVal base
@@ -102,16 +102,22 @@ arithFun base op [v1] = IntVal <$> (op base <$> ensureIntVal v1)
 arithFun _ op (v1:vs) = IntVal <$> (foldl op <$> ensureIntVal v1 <*> mapM ensureIntVal vs)-- arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
 
 compFun :: (Integer -> Integer -> Bool) -> [Value] -> Either String Value
-compFun op [v1, v2] = BoolVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
-compFun _ vs = argCountError 2 vs
+compFun op (v1:v2:vs) = BoolVal <$> helper (v1:v2:vs) where
+    helper [] = Right True
+    helper [_] = Right True
+    helper (l:r:vs') = case op <$> ensureIntVal l <*> ensureIntVal r of
+        (Left err) -> Left err
+        (Right False) -> Right False
+        (Right True) -> helper (r:vs')
+compFun _ vs = argCountError "at least 2" vs
 
 eqFun :: [Value] -> Either String Value
 eqFun [v1, v2] = Right $ BoolVal $ v1 == v2
-eqFun vs = argCountError 2 vs
+eqFun vs = argCountError "2" vs
 
 typePred :: (Value -> Bool) -> [Value] -> Either String Value
 typePred p [v] = Right $ BoolVal $ p v
-typePred _ vs = argCountError 1 vs
+typePred _ vs = argCountError "1" vs
 
 isBool :: Value -> Bool
 isBool (BoolVal _) = True
@@ -140,23 +146,23 @@ isBuiltin _ = False
 
 carFun :: [Value] -> Either String Value
 carFun [v] = head <$> (ensureListVal v >>= nullCheck)
-carFun vs = argCountError 1 vs
+carFun vs = argCountError "1" vs
 
 cdrFun :: [Value] -> Either String Value
 cdrFun [v] = (ListVal . tail) <$> (ensureListVal v >>= nullCheck)
-cdrFun vs = argCountError 1 vs
+cdrFun vs = argCountError "1" vs
 
 consFun :: [Value] -> Either String Value
 consFun [v,vs] = (ListVal . (v:)) <$> ensureListVal vs
-consFun vs = argCountError 2 vs
+consFun vs = argCountError "2" vs
 
 nullCheck :: [Value] -> Either String [Value]
 nullCheck [] = Left "Unexpected empty list"
 nullCheck vs = Right vs
 
-argCountError :: Int -> [Value] -> Either String a
+argCountError :: String -> [Value] -> Either String a
 argCountError n vs =
-    Left $ "Expected " ++ show n ++ " arguments, found " ++ show (length vs) ++ " instead"
+    Left $ "Expected " ++ n ++ " arguments, found " ++ show (length vs) ++ " instead"
 
 ensureBoolVal :: Value -> Either String Bool
 ensureBoolVal (BoolVal b) = Right b
