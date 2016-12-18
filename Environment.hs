@@ -99,7 +99,7 @@ errorFun vs = argCountError "1" vs
 arithFun :: Integer -> (Integer -> Integer -> Integer) -> [Value] -> Either String Value
 arithFun base _ [] = Right $ IntVal base
 arithFun base op [v1] = IntVal <$> (op base <$> ensureIntVal v1)
-arithFun _ op (v1:vs) = IntVal <$> (foldl op <$> ensureIntVal v1 <*> mapM ensureIntVal vs)-- arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
+arithFun _ op (v1:vs) = IntVal <$> (foldl op <$> ensureIntVal v1 <*> mapM ensureIntVal vs)
 
 compFun :: (Integer -> Integer -> Bool) -> [Value] -> Either String Value
 compFun op (v1:v2:vs) = BoolVal <$> helper (v1:v2:vs) where
