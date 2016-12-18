@@ -56,11 +56,11 @@ instance Show Value where
 defaultEnv :: Environment
 defaultEnv = Map.fromList [
         ("error", Builtin "error" errorFun),
-        ("+",  Builtin "+"  $ arithFun (+)),
-        ("-",  Builtin "-"  $ arithFun (-)),
-        ("*",  Builtin "*"  $ arithFun (*)),
-        ("/",  Builtin "/"  $ arithFun div),
-        ("%",  Builtin "%"  $ arithFun mod),
+        ("+",  Builtin "+"  $ arithFun 0 (+)),
+        ("-",  Builtin "-"  $ arithFun 0 (-)),
+        ("*",  Builtin "*"  $ arithFun 1 (*)),
+        ("/",  Builtin "/"  $ arithFun 1 div),
+        ("%",  Builtin "%"  $ arithFun 1 mod),
         ("<",  Builtin "<"  $ compFun (<)),
         ("<=", Builtin "<=" $ compFun (<=)),
         ("=",  Builtin "="  $ compFun (==)),
@@ -96,9 +96,15 @@ errorFun :: [Value] -> Either String Value
 errorFun [v] = Left $ show v
 errorFun vs = argCountError 1 vs
 
-arithFun :: (Integer -> Integer -> Integer) -> [Value] -> Either String Value
-arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
-arithFun _ vs = argCountError 2 vs
+-- arithFun :: (Integer -> Integer -> Integer) -> [Value] -> Either String Value
+-- arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
+-- arithFun _ vs = argCountError 2 vs
+
+arithFun :: Integer -> (Integer -> Integer -> Integer) -> [Value] -> Either String Value
+arithFun base _ [] = Right $ IntVal base
+arithFun base op [v1] = IntVal <$> (op base <$> ensureIntVal v1)
+arithFun _ op (v1:vs) = IntVal <$> (foldl op <$> ensureIntVal v1 <*> mapM ensureIntVal vs)
+-- arithFun op [v1, v2] = IntVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
 
 compFun :: (Integer -> Integer -> Bool) -> [Value] -> Either String Value
 compFun op [v1, v2] = BoolVal <$> (op <$> ensureIntVal v1 <*> ensureIntVal v2)
