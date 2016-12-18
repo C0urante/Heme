@@ -78,6 +78,7 @@ defaultEnv = Map.fromList [
         ("car", Builtin "car" carFun),
         ("cdr", Builtin "cdr" cdrFun),
         ("cons", Builtin "cons" consFun),
+        ("length", Builtin "length" lengthFun),
         ("true", BoolVal True),
         ("false", BoolVal False),
         ("define", Define),
@@ -155,6 +156,10 @@ cdrFun vs = argCountError "1" vs
 consFun :: [Value] -> Either String Value
 consFun [v,vs] = (ListVal . (v:)) <$> ensureListVal vs
 consFun vs = argCountError "2" vs
+
+lengthFun :: [Value] -> Either String Value
+lengthFun [v] = (IntVal . toInteger . length) <$> ensureListVal v
+lengthFun vs = argCountError "1" vs
 
 nullCheck :: [Value] -> Either String [Value]
 nullCheck [] = Left "Unexpected empty list"
