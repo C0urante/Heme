@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Interpreter where
 
 import Parser (Expression(..))
@@ -8,9 +10,9 @@ import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 interpret :: Environment -> Expression -> Either String (Environment, Value)
 interpret env (ListExp (e:es)) = case interpret' env e of
     Left err -> Left err
-    Right Define -> flip (,) Void <$> interpretDefine env es
-    Right f -> (,) env <$> interpretApplication env f es
-interpret env e = (,) env <$> interpret' env e
+    Right Define -> (,Void) <$> interpretDefine env es
+    Right f -> (env,) <$> interpretApplication env f es
+interpret env e = (env,) <$> interpret' env e
 
 interpret' :: Environment -> Expression -> Either String Value
 interpret' _ (StrExp s) = Right $ StrVal s
